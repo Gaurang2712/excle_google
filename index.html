@@ -420,7 +420,15 @@
       <h2>Submit Daily Value</h2>
       <form id="dataForm" name="submit-to-google-sheet">
         <input type="date" name="date" required />
-        <input type="number" step="any" name="value" placeholder="Enter Value" required />
+        <input
+          type="number"
+          step="any"
+          name="value"
+          placeholder="Enter Value"
+          required
+          min="0.0"
+          max="10.0"
+        />
         <button type="submit">Submit</button>
       </form>
       <p id="msg"></p>
