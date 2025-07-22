@@ -212,22 +212,22 @@
         border-radius: 2px;
       }
 
-      /* Chart container with glassmorphism */
+      /* Chart container with glassmorphism - FIXED VERSION */
       .chart-container {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(25px);
+        background: rgba(255, 255, 255, 0.95);
         border-radius: 24px;
         padding: 35px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.1);
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
+        /* Removed backdrop-filter to prevent blur issues */
       }
 
       .chart-container:hover {
         transform: translateY(-8px);
-        box-shadow: 0 35px 70px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: 0 35px 70px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.2);
       }
 
       /* Animated border gradient */
@@ -256,19 +256,29 @@
         }
       }
 
+      /* FIXED CANVAS STYLING */
       canvas {
-        background: rgba(255, 255, 255, 0.95) !important;
+        background: transparent !important;
         border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
         width: 100% !important;
-        height: auto !important;
-        max-height: 400px;
+        height: 400px !important;
+        /* Force specific dimensions to prevent scaling issues */
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+        image-rendering: crisp-edges;
+        /* Improve rendering quality */
       }
 
       canvas:hover {
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-        transform: scale(1.02);
+        transform: scale(1.01);
+      }
+
+      /* Chart wrapper for better control */
+      .chart-wrapper {
+        position: relative;
+        height: 400px;
+        width: 100%;
       }
 
       /* Loading animation */
@@ -276,18 +286,26 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 300px;
-        color: #fff;
+        height: 400px;
+        color: #666;
         font-size: 18px;
         font-weight: 500;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 16px;
+        z-index: 10;
       }
 
       .loading::before {
         content: "";
         width: 40px;
         height: 40px;
-        border: 4px solid rgba(255, 255, 255, 0.3);
-        border-top: 4px solid #fff;
+        border: 4px solid rgba(102, 126, 234, 0.3);
+        border-top: 4px solid #667eea;
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-right: 15px;
@@ -436,6 +454,18 @@
           grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           gap: 15px;
         }
+
+        .chart-wrapper {
+          height: 300px;
+        }
+
+        canvas {
+          height: 300px !important;
+        }
+
+        .loading {
+          height: 300px;
+        }
       }
     </style>
   </head>
@@ -477,7 +507,9 @@
         <h2>📈 Line Chart: Daily Values</h2>
         <div class="chart-container">
           <div class="loading" id="lineLoading">Loading chart data...</div>
-          <canvas id="lineChart" style="display: none"></canvas>
+          <div class="chart-wrapper">
+            <canvas id="lineChart"></canvas>
+          </div>
         </div>
       </div>
 
@@ -485,7 +517,9 @@
         <h2>📊 Bar Chart: Daily Entries</h2>
         <div class="chart-container">
           <div class="loading" id="barLoading">Loading chart data...</div>
-          <canvas id="barChart" style="display: none"></canvas>
+          <div class="chart-wrapper">
+            <canvas id="barChart"></canvas>
+          </div>
         </div>
       </div>
 
@@ -493,7 +527,9 @@
         <h2>📉 Histogram: Value Distribution</h2>
         <div class="chart-container">
           <div class="loading" id="histLoading">Loading chart data...</div>
-          <canvas id="histogramChart" style="display: none"></canvas>
+          <div class="chart-wrapper">
+            <canvas id="histogramChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -501,6 +537,28 @@
     <script>
       const SHEET_URL =
         "https://opensheet.elk.sh/1WNbv4C6xl2ZcskMrIImuwEjxdFCiIKzwnM2AIsS4Nfg/Sheet1";
+
+      // FIXED: Configure Chart.js defaults for better rendering
+      Chart.defaults.font.family = 'Inter';
+      Chart.defaults.plugins.legend.labels.usePointStyle = true;
+      Chart.defaults.elements.point.radius = 4;
+      Chart.defaults.elements.point.hoverRadius = 6;
+      Chart.defaults.animation.duration = 1000;
+
+      // FIXED: Function to handle high-DPI canvas rendering
+      function setupHighDPICanvas(canvas) {
+        const ctx = canvas.getContext('2d');
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        
+        canvas.width = rect.width * devicePixelRatio;
+        canvas.height = rect.height * devicePixelRatio;
+        
+        ctx.scale(devicePixelRatio, devicePixelRatio);
+        
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+      }
 
       async function fetchData() {
         try {
@@ -543,9 +601,9 @@
 
       function hideLoading(chartId) {
         const loadingEl = document.getElementById(`${chartId}Loading`);
-        const chartEl = document.getElementById(chartId);
-        if (loadingEl) loadingEl.style.display = "none";
-        if (chartEl) chartEl.style.display = "block";
+        if (loadingEl) {
+          loadingEl.style.display = "none";
+        }
       }
 
       function showError(message) {
@@ -563,9 +621,15 @@
       }
 
       function renderCharts(labels, values) {
+        // FIXED: Setup canvases for high-DPI rendering
+        const canvases = ['lineChart', 'barChart', 'histogramChart'];
+        canvases.forEach(canvasId => {
+          const canvas = document.getElementById(canvasId);
+          setupHighDPICanvas(canvas);
+        });
+
         // Line Chart
-        hideLoading("lineChart");
-        new Chart(document.getElementById("lineChart"), {
+        const lineChart = new Chart(document.getElementById("lineChart"), {
           type: "line",
           data: {
             labels,
@@ -574,14 +638,14 @@
                 label: "Daily Values",
                 data: values,
                 borderColor: "rgba(102, 126, 234, 1)",
-                backgroundColor: "rgba(102, 126, 234, 0.1)",
+                backgroundColor: "rgba(102, 126, 234, 0.15)",
                 fill: true,
                 tension: 0.4,
                 borderWidth: 3,
                 pointBackgroundColor: "rgba(102, 126, 234, 1)",
                 pointBorderColor: "#fff",
                 pointBorderWidth: 2,
-                pointRadius: 6,
+                pointRadius: 5,
                 pointHoverRadius: 8,
               },
             ],
@@ -589,35 +653,54 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            devicePixelRatio: window.devicePixelRatio || 1,
             plugins: {
               legend: {
+                position: 'top',
                 labels: {
-                  font: { family: "Inter", weight: "500" },
+                  font: { family: "Inter", weight: "600", size: 13 },
                   color: "#333",
+                  padding: 20
                 },
               },
             },
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: "rgba(0,0,0,0.05)" },
-                ticks: { font: { family: "Inter" }, color: "#666" },
+                grid: { 
+                  color: "rgba(0,0,0,0.08)",
+                  lineWidth: 1
+                },
+                ticks: { 
+                  font: { family: "Inter", size: 12 }, 
+                  color: "#666",
+                  padding: 8
+                },
               },
               x: {
-                grid: { color: "rgba(0,0,0,0.05)" },
-                ticks: { font: { family: "Inter" }, color: "#666" },
+                grid: { 
+                  color: "rgba(0,0,0,0.05)",
+                  lineWidth: 1
+                },
+                ticks: { 
+                  font: { family: "Inter", size: 12 }, 
+                  color: "#666",
+                  maxTicksLimit: 10
+                },
               },
             },
             animation: {
-              duration: 2000,
+              duration: 1200,
               easing: "easeInOutQuart",
+              onComplete: function() {
+                hideLoading("line");
+              }
             },
           },
         });
 
         // Bar Chart
-        hideLoading("barChart");
-        new Chart(document.getElementById("barChart"), {
+        const barChart = new Chart(document.getElementById("barChart"), {
           type: "bar",
           data: {
             labels,
@@ -625,10 +708,10 @@
               {
                 label: "Daily Values",
                 data: values,
-                backgroundColor: "rgba(78, 205, 196, 0.8)",
+                backgroundColor: "rgba(78, 205, 196, 0.85)",
                 borderColor: "rgba(78, 205, 196, 1)",
                 borderWidth: 2,
-                borderRadius: 8,
+                borderRadius: 6,
                 borderSkipped: false,
               },
             ],
@@ -636,28 +719,45 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            devicePixelRatio: window.devicePixelRatio || 1,
             plugins: {
               legend: {
+                position: 'top',
                 labels: {
-                  font: { family: "Inter", weight: "500" },
+                  font: { family: "Inter", weight: "600", size: 13 },
                   color: "#333",
+                  padding: 20
                 },
               },
             },
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: "rgba(0,0,0,0.05)" },
-                ticks: { font: { family: "Inter" }, color: "#666" },
+                grid: { 
+                  color: "rgba(0,0,0,0.08)",
+                  lineWidth: 1
+                },
+                ticks: { 
+                  font: { family: "Inter", size: 12 }, 
+                  color: "#666",
+                  padding: 8
+                },
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { family: "Inter" }, color: "#666" },
+                ticks: { 
+                  font: { family: "Inter", size: 12 }, 
+                  color: "#666",
+                  maxTicksLimit: 10
+                },
               },
             },
             animation: {
-              duration: 2000,
+              duration: 1200,
               easing: "easeInOutQuart",
+              onComplete: function() {
+                hideLoading("bar");
+              }
             },
           },
         });
@@ -679,8 +779,7 @@
           if (counts[index] !== undefined) counts[index]++;
         });
 
-        hideLoading("histogramChart");
-        new Chart(document.getElementById("histogramChart"), {
+        const histogramChart = new Chart(document.getElementById("histogramChart"), {
           type: "bar",
           data: {
             labels: bins,
@@ -688,10 +787,10 @@
               {
                 label: "Frequency",
                 data: counts,
-                backgroundColor: "rgba(255, 167, 38, 0.8)",
+                backgroundColor: "rgba(255, 167, 38, 0.85)",
                 borderColor: "rgba(255, 167, 38, 1)",
                 borderWidth: 2,
-                borderRadius: 8,
+                borderRadius: 6,
                 borderSkipped: false,
               },
             ],
@@ -699,35 +798,56 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            devicePixelRatio: window.devicePixelRatio || 1,
             plugins: {
               legend: {
+                position: 'top',
                 labels: {
-                  font: { family: "Inter", weight: "500" },
+                  font: { family: "Inter", weight: "600", size: 13 },
                   color: "#333",
+                  padding: 20
                 },
               },
             },
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: "rgba(0,0,0,0.05)" },
+                grid: { 
+                  color: "rgba(0,0,0,0.08)",
+                  lineWidth: 1
+                },
                 ticks: {
-                  font: { family: "Inter" },
+                  font: { family: "Inter", size: 12 },
                   color: "#666",
                   stepSize: 1,
+                  padding: 8
                 },
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { family: "Inter" }, color: "#666" },
+                ticks: { 
+                  font: { family: "Inter", size: 12 }, 
+                  color: "#666",
+                  maxTicksLimit: 15
+                },
               },
             },
             animation: {
-              duration: 2000,
+              duration: 1200,
               easing: "easeInOutQuart",
+              onComplete: function() {
+                hideLoading("hist");
+              }
             },
           },
         });
+
+        // Hide loading after all charts are rendered
+        setTimeout(() => {
+          hideLoading("line");
+          hideLoading("bar");
+          hideLoading("hist");
+        }, 1300);
       }
 
       // Add some interactive sparkle effects
